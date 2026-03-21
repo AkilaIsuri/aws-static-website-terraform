@@ -84,6 +84,7 @@ resource "aws_cloudfront_distribution" "s3_distribution" {
     origin_access_control_id = aws_cloudfront_origin_access_control.origin_access_control.id
   }
 
+  aliases = ["aws-static-website-terraform.com"]
   enabled             = true
   is_ipv6_enabled     = true
   default_root_object = "index.html"
@@ -115,10 +116,50 @@ resource "aws_cloudfront_distribution" "s3_distribution" {
   }
 
   viewer_certificate {
-    cloudfront_default_certificate = true
-  }
+  acm_certificate_arn = aws_acm_certificate_validation.cert_validation.certificate_arn
+  ssl_support_method  = "sni-only"
+}
 }
 
+resource "aws_route53_zone" "main" {
+  name = "aws-static-website-terraform.com"
+}
 
+resource "aws_acm_certificate" "cert" {
+  provider          = aws.us_east_1
+  domain_name       = "aws-static-website-terraform.com"
+  validation_method = "DNS"
+}
 
+resource "aws_route53_record" "cert_validation" {
+  for_each = {
+    for dvo in aws_acm_certificate.cert.domain_validation_options :
+    dvo.domain_name => dvo
+  }
 
+  zone_id = aws_route53_zone.main.zone_id
+  name    = each.value.resource_record_name
+  type    = each.value.resource_record_type
+  records = [each.value.resource_record_value]
+  ttl     = 60
+}
+
+resource "aws_acm_certificate_validation" "cert_validation" {
+  provider                = aws.us_east_1
+  certificate_arn         = aws_acm_certificate.cert.arn
+  validation_record_fqdns = [
+    for record in aws_route53_record.cert_validation : record.fqdn
+  ]
+}
+
+resource "aws_route53_record" "main" {
+  zone_id = aws_route53_zone.main.zone_id
+  name    = "aws-static-website-terraform.com"
+  type    = "A"
+
+  alias {
+    name                   = aws_cloudfront_distribution.s3_distribution.domain_name
+    zone_id                = aws_cloudfront_distribution.s3_distribution.hosted_zone_id
+    evaluate_target_health = false
+  }
+}
