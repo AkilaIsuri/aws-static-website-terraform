@@ -3,5 +3,4 @@
 *.tfstate.*
 crash.log
 terraform.tfvars
-*.tfvars
 .env
