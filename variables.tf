@@ -4,7 +4,9 @@ variable "aws_region" {
     type = string
 }
 
-variable "bucket_name" {
-    default = "cloudfront-s3-akila-12345-bucket"
-    type = string
-}
+
+
+variable "env" {}
+variable "bucket_name" {}
+variable "domain_name" {}
+

@@ -1,7 +1,7 @@
 resource "aws_s3_bucket" "mybucket" {
-  bucket = var.bucket_name
+  bucket = "${var.bucket_name}-${var.env}"
   lifecycle {
-    prevent_destroy = true
+    prevent_destroy = false
   }
 }
 
@@ -87,7 +87,7 @@ resource "aws_cloudfront_distribution" "s3_distribution" {
     origin_access_control_id = aws_cloudfront_origin_access_control.origin_access_control.id
   }
 
-  aliases = ["aws-static-website-terraform.com"]
+  aliases = [var.domain_name]
   enabled             = true
   is_ipv6_enabled     = true
   default_root_object = "index.html"
@@ -125,12 +125,12 @@ resource "aws_cloudfront_distribution" "s3_distribution" {
 }
 
 resource "aws_route53_zone" "main" {
-  name = "aws-static-website-terraform.com"
+  name = var.domain_name
 }
 
 resource "aws_acm_certificate" "cert" {
   provider          = aws.us_east_1
-  domain_name       = "aws-static-website-terraform.com"
+  domain_name       = var.domain_name
   validation_method = "DNS"
 }
 
