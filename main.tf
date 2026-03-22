@@ -1,5 +1,8 @@
 resource "aws_s3_bucket" "mybucket" {
   bucket = var.bucket_name
+  lifecycle {
+    prevent_destroy = true
+  }
 }
 
 resource "aws_s3_bucket_public_access_block" "s3_access_block" {
@@ -162,4 +165,6 @@ resource "aws_route53_record" "main" {
     zone_id                = aws_cloudfront_distribution.s3_distribution.hosted_zone_id
     evaluate_target_health = false
   }
+
+  
 }
