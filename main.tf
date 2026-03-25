@@ -137,6 +137,12 @@ custom_error_response {
   response_code         = 200
   response_page_path    = "/error.html"
 }
+
+logging_config {
+  bucket = aws_s3_bucket.cf_logs.bucket_domain_name
+  include_cookies = false
+  prefix          = "cloudfront/"
+}
 }
 
 resource "aws_route53_zone" "main" {
@@ -253,5 +259,37 @@ resource "aws_wafv2_web_acl" "web_acl" {
       metric_name                = "commonRules"
       sampled_requests_enabled   = true
     }
+  }
+}
+
+#creating bucket for logging
+resource "aws_s3_bucket" "cf_logs" {
+  bucket = "${var.bucket_name}-logs-${var.env}"
+}
+
+#create cloudwatch log group for cloudfront logs
+resource "aws_cloudwatch_log_group" "waf_logs" {
+  name = "waf-logs-${var.env}"
+}
+
+#Enable waf logging
+resource "aws_wafv2_web_acl_logging_configuration" "waf_logging" {
+  resource_arn            = aws_wafv2_web_acl.web_acl.arn
+  log_destination_configs = [aws_cloudwatch_log_group.waf_logs.arn]
+}
+
+#Enable cloudwatch alarms for monitoring 5xx errors
+resource "aws_cloudwatch_metric_alarm" "cf_5xx_errors" {
+  alarm_name          = "cloudfront-5xx-errors-${var.env}"
+  comparison_operator = "GreaterThanThreshold"
+  evaluation_periods  = 1
+  metric_name         = "5xxErrorRate"
+  namespace           = "AWS/CloudFront"
+  period              = 60
+  statistic           = "Average"
+  threshold           = 5
+
+  dimensions = {
+    DistributionId = aws_cloudfront_distribution.s3_distribution.id
   }
 }
