@@ -91,6 +91,7 @@ resource "aws_cloudfront_distribution" "s3_distribution" {
   enabled             = true
   is_ipv6_enabled     = true
   default_root_object = "index.html"
+  web_acl_id = aws_wafv2_web_acl.web_acl.arn
 
   default_cache_behavior {
     allowed_methods  = ["GET", "HEAD"]
@@ -211,6 +212,46 @@ resource "aws_cloudfront_response_headers_policy" "security_headers" {
       protection = true
       mode_block = true
       override   = true
+    }
+  }
+}
+
+
+resource "aws_wafv2_web_acl" "web_acl" {
+  provider = aws.us_east_1
+
+  name  = "cloudfront-waf"
+  scope = "CLOUDFRONT"
+
+  default_action {
+    allow {}
+  }
+
+  visibility_config {
+    cloudwatch_metrics_enabled = true
+    metric_name                = "cloudfrontWAF"
+    sampled_requests_enabled   = true
+  }
+
+  rule {
+    name     = "AWSManagedRulesCommonRuleSet"
+    priority = 1
+
+    override_action {
+      none {}
+    }
+
+    statement {
+      managed_rule_group_statement {
+        name        = "AWSManagedRulesCommonRuleSet"
+        vendor_name = "AWS"
+      }
+    }
+
+    visibility_config {
+      cloudwatch_metrics_enabled = true
+      metric_name                = "commonRules"
+      sampled_requests_enabled   = true
     }
   }
 }
